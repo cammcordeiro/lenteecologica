@@ -1,0 +1,334 @@
+---
+title: "Lente Ecologica"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+  runtime: shiny
+---
+
+```{r global, include=FALSE}
+
+library(flexdashboard)
+library(tidyverse)
+library(plotly)
+library(leaflet)
+library(plotly)
+
+
+# load data
+campos <- read.csv("~/git/ciencia_colab/data/campos_gbif_25apr2022.csv", header = T) %>% 
+  mutate(municipio = rep(LETTERS[1:10], 924))
+
+NORFLU <- rgdal::readOGR("~/git/CCBD_atividade4/map.shp")
+UCs <- rgdal::readOGR("C:/Users/UENF/Downloads/UC_BR/ucstodas.shp")
+
+
+```
+
+
+# Início
+
+## Introdução {.sidebar}
+
+![](images/usingR.jpeg){width="200"}
+
+O nome "Lente Ecológica" faz um paralelo entre as metodologias utilizadas no projeto e como a sociedade percebe o meio ambiente. O objetivo geral do projeto é ajustar o 'foco' dos participantes em relação a como estes enxergam a fauna e flora, e como o ser humano se observa nessas relações. Utilizando a observação direta como meio de inserção dos participantes no contexto ambiental através das lentes dos usuários (câmeras e *smartphones*) e meios de comunicação interativos -- as mídias sociais, o projeto buscará incentivar o aprendizado empírico-científico e gerar sensibilização ambiental.
+
+
+------------------------------------------------------------------------
+
+## Row 1 {data-height="650"}
+
+### **Ocorrências de espécies no Norte Fluminense** - Cada ponto na imagem corresponde a um registro de ocorrência de uma espécie ou táxon na região Norte Fluminense. Os dados foram coletados da base *Global Biodiversity Information Facility* (GBIF).
+```{r mapa NF}
+
+pal <- colorFactor(palette = "viridis", domain = unique(campos$kingdom))
+
+NORFLU %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(col = "",
+              fillColor = "yellow",
+              highlight = highlightOptions(weight = 0.5,
+                                           color = "red",
+                                           fillOpacity = 0.7,
+                                           bringToFront = TRUE),
+              label = ~NM_MUNICIP) %>% 
+  addCircleMarkers(data = campos,
+                   ~decimalLongitude,
+                   ~decimalLatitude,
+                   radius = 5,
+                   #label = ~as.character(datasetName),
+                   color = ~pal(campos$kingdom),
+                   stroke = FALSE, fillOpacity = 0.5) %>%
+  addLegend('bottomright',
+          colors = unique(pal(campos$kingdom)),
+          labels = unique(campos$kingdom),
+          title = 'Dataset',
+          opacity = 0.5)
+
+```
+
+## Row 2 {data-height="250"}
+
+### Box1 {data-width="400"}
+
+```{r}
+
+a2 <- campos %>% 
+  mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+  group_by(kingdom) %>% 
+  summarise(spp = n_distinct(scientificName)) %>% 
+  ggplot(aes(y = kingdom, x = spp, fill = kingdom)) +
+    geom_bar(stat = 'identity') +
+    theme_classic() +
+    theme(legend.position = "") +
+    labs(y = "")
+
+ggplotly(a2) %>%
+  layout(
+    showlegend = F, 
+    legend = list(orientation = 'h')
+  )
+
+```
+
+### Box2
+
+```{r}
+
+rank <- campos %>% 
+  mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+  group_by(kingdom, phylum) %>% 
+  summarise(spp = n_distinct(paste(genus, species))) %>% 
+  filter(!phylum %in% c(NA, "")) %>% 
+  arrange(kingdom, spp) %>% 
+  pull(phylum)
+
+a1 <- campos %>% 
+  mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+  group_by(kingdom, phylum) %>% 
+  summarise(spp = n_distinct(paste(genus, species))) %>% 
+  filter(!phylum %in% c(NA, "")) %>% 
+  mutate(phylum = factor(phylum, levels = rank)) %>% 
+  ggplot(aes(y = phylum, x = spp, fill = kingdom)) +
+    geom_bar(stat = 'identity') +
+    #facet_wrap(kingdom ~ ., scales = 'free', nrow = 1) +
+    theme_classic() +
+    theme(legend.position = "") +
+    labs(x = "Número de táxons", y = "")
+
+ggplotly(a1)
+
+
+```
+
+### Box3
+
+```{r}
+
+ggplotly(a1)
+
+```
+
+------------------------------------------------------------------------
+
+# Municípios do Norte Fluminense
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+
+lista_municipios <- LETTERS[1:10]
+
+selectInput("municipios", label = h3("Selecione um município para ver as ocorrências de espécies locais"), 
+            choices = lista_municipios, 
+            selected = lista_municipios[[1]])
+
+```
+
+## Row 1 {data-height="100"}
+
+### Espécies
+
+```{r}
+
+media_riqueza <- campos %>% 
+  dplyr::filter(species != "") %>% 
+  group_by(municipio) %>% 
+  summarise(spp = n_distinct(species)) %>% 
+  mutate(media = mean(spp)) %>% 
+  pull() %>% 
+  unique()
+
+renderValueBox({
+  riqueza <- campos %>% 
+    dplyr::filter(municipio == input$municipios) %>%
+    summarise(n_distinct(species)) %>% 
+    pull()
+  valueBox(
+    value = riqueza,
+    icon = "fa-area-chart",
+    color = if (riqueza < media_riqueza) "warning" else "primary"
+  )
+})
+
+# https://fontawesome.com/v4/icons/
+
+```
+
+### Ocorrências
+
+```{r}
+
+media_occ <- campos %>% 
+  dplyr::filter(species != "") %>% 
+  group_by(municipio) %>% 
+  summarise(spp = n_distinct(species)) %>% 
+  mutate(media = mean(spp)) %>% 
+  pull() %>% 
+  unique()
+
+renderValueBox({
+  occ_local <- campos %>% 
+    dplyr::filter(municipio == input$municipios) %>%
+    summarise(n_distinct(species)) %>% 
+    pull()
+  valueBox(
+    value = occ_local,
+    icon = "fa-area-chart",
+    color = if (occ_local < media_occ) "warning" else "primary"
+  )
+})
+
+
+```
+
+### Ameaçadas
+
+```{r}
+
+media_riqueza <- campos %>% 
+  dplyr::filter(species != "") %>% 
+  group_by(municipio) %>% 
+  summarise(spp = n_distinct(species)) %>% 
+  mutate(media = mean(spp)) %>% 
+  pull() %>% 
+  unique()
+
+renderValueBox({
+  riqueza <- 20
+  valueBox(
+    value = riqueza,
+    icon = "fa-area-chart",
+    color = if (riqueza < media_riqueza) "warning" else "primary"
+  )
+})
+
+
+```
+
+## Row 2 {data-height="300"}
+
+### Boxplot
+
+```{r}
+
+
+renderPlot({
+  
+   campos %>% 
+    dplyr::filter(municipio == input$municipios) %>% 
+    mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+    group_by(kingdom) %>% 
+    summarise(spp = n_distinct(scientificName)) %>% 
+    ggplot(aes(y = kingdom, x = spp, fill = kingdom)) +
+      geom_bar(stat = 'identity') +
+      theme_classic() +
+      theme(legend.position = "") +
+      labs(y = "")
+  
+})
+
+
+```
+
+### Grupos taxonômicos
+
+```{r chart B}
+
+renderTable({
+  campos %>% 
+    dplyr::filter(municipio == input$municipios,
+                  species != "") %>%
+    dplyr::select(species, kingdom:order, occurrenceID) %>% 
+    group_by(species, kingdom, class, order) %>% 
+    summarise(ocorrencias = n_distinct(occurrenceID))
+
+})
+
+
+```
+
+## Row 3 {data-height="300"}
+
+### Temporal
+
+```{r}
+
+renderPlotly({
+  
+    linhas <- campos %>% 
+      dplyr::filter(municipio == input$municipios,
+                    !is.na(year)) %>% 
+      group_by(year) %>%
+      summarise(id = n_distinct(occurrenceID),
+                spp = n_distinct(species)) %>% 
+      mutate(spp_cum = cumsum(spp)) 
+     
+   L1 <- linhas %>% 
+    ggplot(aes(y = id, x = year)) +
+      geom_area(fill = "blue", alpha = 0.6) +
+      geom_area(data = linhas, aes(y = spp), fill = "red", alpha = 0.6) +
+      theme_classic() +
+      theme(legend.position = "") +
+      labs(x = "Anos", y = "Espécies registradas (n)") +
+      scale_x_continuous(breaks = seq(1800, 2022, by = 20))
+   
+   ggplotly(L1)
+   
+})
+
+
+```
+
+### Ocorrências no município
+
+```{r chart C}
+
+# conferir no mapa
+
+renderLeaflet({
+  
+UCs %>%
+  leaflet() %>% 
+    addTiles() %>% 
+    addPolygons() %>% 
+    addCircleMarkers(data = campos %>% 
+                       dplyr::filter(municipio == input$municipios,
+                                     !is.na(decimalLatitude)) %>% 
+                       distinct(),
+                     ~decimalLongitude, 
+                     ~decimalLatitude,
+                     radius = 5,
+                     #label = ~as.character(datasetName),
+                     color = ~pal(campos$kingdom),
+                     stroke = FALSE, 
+                     fillOpacity = 0.5) 
+})
+
+
+```

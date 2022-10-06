@@ -1,0 +1,414 @@
+---
+title: "Lente Ecologica"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+  runtime: shiny
+resource_files:
+- map.prj
+- map.shx
+- map.dbf
+- ucstodas.dbf
+- ucstodas.shx
+- ucstodas.shp
+- UCs_NF.dbf
+- UCs_NF.prj
+- UCs_NF.shx
+---
+
+```{r global, include=FALSE}
+
+library(flexdashboard)
+library(tidyverse)
+library(plotly)
+library(leaflet)
+library(plotly)
+
+
+# load data
+occ_NF <- read.csv("data/GBIF_occ_NF_03may2022_ameaca.csv", header = T) %>% 
+    mutate(ameacada = ifelse(is.na(Categoria.de.AmeaÃ.a), "não", "sim"))
+
+NORFLU <- rgdal::readOGR("data/shapefile/map.shp")
+UCs_NF <- rgdal::readOGR("data/shapefile/UCs_NF.shp")
+
+```
+
+# Início
+
+## Introdução {.sidebar}
+
+
+A "Lente Ecológica" faz um paralelo entre as metodologias utilizadas no projeto e como a sociedade percebe o meio ambiente. O objetivo do projeto é ajustar o 'foco' dos participantes em relação a fauna e flora, e como o ser humano se observa nessas relações. Utilizando a observação direta como meio de inserção dos participantes no contexto ambiental, as lentes das câmeras e *smartphones* e as mídias sociais serão as ferramentas do aprendizado empírico-científico e sensibilização ambiental dos participantes.
+
+***
+
+```{r, out.width=220}
+
+knitr::include_graphics("lente_ecologica.png", error = FALSE)
+
+```
+
+
+------------------------------------------------------------------------
+
+## Row 1 {data-height="650"}
+
+### **Ocorrências de espécies no Norte Fluminense** - Cada ponto na imagem corresponde a um registro de ocorrência de uma espécie ou táxon na região Norte Fluminense. Os dados foram coletados da base *Global Biodiversity Information Facility* (GBIF).
+
+```{r mapa NF}
+
+pal <- colorFactor(palette = "viridis", domain = unique(occ_NF$kingdom))
+
+NORFLU %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(col = "",
+              fillColor = "orange",
+              highlight = highlightOptions(weight = 0.2,
+                                           color = "red",
+                                           fillOpacity = 0.7,
+                                           bringToFront = F),
+              label = ~NM_MUNICIP) %>% 
+  addCircleMarkers(data = occ_NF,
+                   ~decimalLongitude,
+                   ~decimalLatitude,
+                   radius = 2,
+                   #label = ~as.character(datasetName),
+                   color = ~pal(occ_NF$kingdom),
+                   stroke = FALSE, fillOpacity = 0.5) %>%
+  addLegend('bottomright',
+          colors = unique(pal(occ_NF$kingdom)),
+          labels = unique(occ_NF$kingdom),
+          title = 'Dataset',
+          opacity = 0.5)
+
+```
+
+## Row 2 {data-height="300"}
+
+### Espécies por Reino na região {data-width="400"}
+
+```{r}
+
+a2 <- occ_NF %>% 
+  mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+  filter(kingdom != "incertae sedis") %>% 
+  group_by(kingdom) %>% 
+  summarise(spp = n_distinct(scientificName)) %>% 
+  ggplot(aes(y = kingdom, x = spp, fill = kingdom)) +
+    geom_bar(stat = 'identity') +
+    theme_classic() +
+    theme(legend.position = "") +
+    labs(y = "", x = "Espécies (n)")
+
+ggplotly(a2) %>%
+  layout(
+    showlegend = F, 
+    legend = list(orientation = 'h')
+  )
+
+```
+
+### Espécies por Filo e Reino
+
+```{r}
+
+rankK <- occ_NF %>% 
+  mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+  group_by(kingdom) %>% 
+  summarise(spp = n_distinct(scientificName)) %>% 
+  arrange(kingdom, spp) %>% 
+  pull(kingdom)
+
+a3 <- occ_NF %>% 
+  mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+  filter(kingdom != "incertae sedis",
+         !phylum %in% c(NA, "")) %>% 
+  mutate(kingdom = factor(kingdom, levels = rankK)) %>%
+  select(kingdom, NM_MUNICIP, scientificName) %>% 
+  ggplot(aes(y = NM_MUNICIP, fill = kingdom)) +
+    geom_bar(position = 'fill') +
+    theme_classic() +
+    labs(x = "Número de espécies", y = "") +
+    theme(legend.title = element_blank())
+
+ggplotly(a3)
+
+
+```
+
+### Espécies ameaçadas (ICMBio 2020)
+
+```{r}
+
+a3 <- occ_NF %>% 
+  mutate(ameacada = ifelse(is.na(Categoria.de.AmeaÃ.a), "não", "sim")) %>% 
+  group_by(NM_MUNICIP, ameacada) %>% 
+  summarise(spp = n_distinct(species)) %>% 
+  ggplot(aes(y = NM_MUNICIP, x = spp, fill = ameacada)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    theme(legend.title = element_blank()) +
+    labs(y = "", x = "Espécies (n)")
+
+ggplotly(a3)
+
+```
+
+------------------------------------------------------------------------
+
+# Municípios do Norte Fluminense
+
+## Inputs {.sidebar}
+
+```{r}
+
+lista_NM_MUNICIPs <- occ_NF %>% distinct(NM_MUNICIP) %>% pull()
+
+shiny::selectInput("NM_MUNICIPs", label = shiny::h3("Selecione um município para ver as ocorrências de espécies locais"), 
+            choices = lista_NM_MUNICIPs, 
+            selected = lista_NM_MUNICIPs[[1]])
+
+selectInput
+
+```
+
+## Row 1 {data-height="200"}
+
+### Espécies
+
+```{r}
+
+media_riqueza <- occ_NF %>% 
+  dplyr::filter(species != "") %>% 
+  group_by(NM_MUNICIP) %>% 
+  summarise(spp = n_distinct(species)) %>% 
+  mutate(media = median(spp)) %>% 
+  pull() %>% 
+  unique()
+
+renderValueBox({
+  riqueza <- occ_NF %>% 
+    dplyr::filter(NM_MUNICIP == input$NM_MUNICIPs) %>%
+    summarise(n_distinct(species)) %>% 
+    pull()
+  valueBox(
+    value = riqueza,
+    icon = "fa-bug",
+    color = if (riqueza < media_riqueza) "warning" else "primary"
+  )
+})
+
+# https://fontawesome.com/v4/icons/
+
+```
+
+### Ocorrências
+
+```{r}
+
+media_occ <- occ_NF %>% 
+  dplyr::filter(species != "") %>% 
+  group_by(NM_MUNICIP) %>% 
+  summarise(occ = n_distinct(occurrenceID)) %>% 
+  mutate(media = median(occ)) %>% 
+  pull() %>% 
+  unique()
+
+renderValueBox({
+  occ_local <- occ_NF %>% 
+    dplyr::filter(NM_MUNICIP == input$NM_MUNICIPs) %>%
+    summarise(n_distinct(occurrenceID)) %>% 
+    pull()
+  valueBox(
+    value = occ_local,
+    icon = "fa-area-chart",
+    color = if (occ_local < media_occ) "warning" else "primary"
+  )
+})
+
+
+```
+
+### **Espécies ameaçadas**
+
+```{r}
+
+flexdashboard::renderGauge({
+  
+  valor1 <- occ_NF %>% 
+    filter(NM_MUNICIP == input$NM_MUNICIPs) %>% 
+    filter(ameacada == "sim") %>% distinct(species) %>% nrow()
+  
+  valor2 <- occ_NF %>% 
+    filter(NM_MUNICIP == input$NM_MUNICIPs) %>% distinct(species) %>% nrow()
+  
+  gauge(
+    value = round(valor1/valor2, 2),
+    min = 0,
+    max = valor2,
+    symbol = "%",
+    )
+  
+})
+
+```
+
+
+### **Categorias de ameaça** {data-width="1000"}
+
+```{r}
+
+renderPlotly({
+  
+  ameaca <- occ_NF %>% 
+  mutate(Categoria.de.AmeaÃ.a = as.factor(Categoria.de.AmeaÃ.a)) %>% 
+  filter(!is.na(Categoria.de.AmeaÃ.a)) %>% 
+  filter(NM_MUNICIP == input$NM_MUNICIPs) %>%
+  group_by(Categoria.de.AmeaÃ.a, .drop = FALSE) %>% 
+  summarise(spp = n_distinct(species))
+ 
+  L3 <- ameaca %>% 
+  ggplot(aes(x = Categoria.de.AmeaÃ.a, y = spp, fill = Categoria.de.AmeaÃ.a)) +
+    geom_bar(stat = 'identity') +
+    theme_classic() +
+    theme(legend.title = element_blank()) +
+    labs(x = "", y = "Espécies (n)")
+   
+    ggplotly(L3) %>%
+  layout(
+    showlegend = F, 
+    legend = list(orientation = 'h')
+  )
+
+  
+})
+
+```
+
+
+## Row 2 {data-height="300"}
+
+### Espécies por Filo e Reino
+
+```{r}
+
+
+renderPlotly({
+  
+  taxa <- occ_NF %>% 
+  mutate(kingdom = factor(kingdom, levels = c("Viruses", "Bacteria", "Chromista", "Fungi", "Plantae", "Animalia", "incertae sedis"))) %>% 
+      dplyr::filter(NM_MUNICIP == input$NM_MUNICIPs,
+                    kingdom != "incertae sedis",
+                    !phylum %in% c(NA, "")) %>% 
+      group_by(kingdom, phylum) %>%
+      summarise(spp = n_distinct(scientificName))
+ 
+  L2 <- taxa %>% 
+  ggplot(aes(y = phylum, x = spp, fill = kingdom)) +
+    geom_bar(stat = 'identity') +
+    theme_classic() +
+    theme(legend.position = "") +
+    labs(x = "Número de espécies", y = "")
+   
+      ggplotly(L2)
+
+  
+})
+
+```
+
+### Grupos taxonômicos
+
+```{r chart B}
+
+renderTable({
+  occ_NF %>% 
+    dplyr::filter(NM_MUNICIP == input$NM_MUNICIPs,
+                  species != "") %>%
+    dplyr::select(species, kingdom:order, occurrenceID, Categoria.de.AmeaÃ.a) %>% 
+    group_by(species, kingdom, class, order, Categoria.de.AmeaÃ.a) %>% 
+    summarise(ocorrencias = n_distinct(occurrenceID))
+
+})
+
+```
+
+## Row 3 {data-height="300"}
+
+### Temporal
+
+```{r}
+
+renderPlotly({
+  
+    linhas <- occ_NF %>% 
+      dplyr::filter(NM_MUNICIP == input$NM_MUNICIPs,
+                    !is.na(year)) %>% 
+      group_by(year) %>%
+      summarise(id = n_distinct(occurrenceID),
+                spp = n_distinct(species)) %>% 
+      mutate(spp_cum = cumsum(spp)) 
+     
+   L1 <- linhas %>% 
+    ggplot(aes(y = id, x = year)) +
+      geom_area(fill = "blue", alpha = 0.6) +
+      geom_area(data = linhas, aes(y = spp), fill = "red", alpha = 0.6) +
+      theme_classic() +
+      theme(legend.position = "") +
+      labs(x = "Anos", y = "Espécies registradas (n)") +
+      scale_x_continuous(breaks = seq(1800, 2022, by = 20))
+   
+   ggplotly(L1)
+   
+})
+
+```
+
+### Ocorrências no município
+
+```{r chart C}
+
+# conferir no mapa
+
+renderLeaflet({
+  
+  leaflet() %>% 
+    addTiles() %>% 
+    addPolygons(data = subset(NORFLU, NM_MUNICIP == input$NM_MUNICIPs),
+                col = "",
+              fillColor = "blue",
+              highlight = highlightOptions(weight = 0.1,
+                                           color = "darkblue",
+                                           fillOpacity = 0.7,
+                                           bringToFront = F)) %>% 
+    addPolygons(data = UCs_NF,
+                fillColor = "red",
+                label = ~NOME_UC1) %>% 
+    addCircleMarkers(data = occ_NF %>% 
+                       dplyr::filter(NM_MUNICIP == input$NM_MUNICIPs,
+                                     !is.na(decimalLatitude)) %>% 
+                       distinct(),
+                     ~decimalLongitude, 
+                     ~decimalLatitude,
+                     radius = 5,
+                     #label = ~as.character(datasetName),
+                     color = ~pal(occ_NF$kingdom),
+                     stroke = FALSE, 
+                     fillOpacity = 0.5) 
+})
+
+```
+
+------------------------------------------------------------------------
+
+# Dados e referências
+
+Dados de ocorrência de espécies: GBIF.org (3 May 2022) GBIF Occurrence Download https://doi.org/10.15468/dl.d6p22y - acesso em 03/05/2022
+
+Limites dos municípios do Estado do Rio de Janeiro (2018) https://www.ceperj.rj.gov.br/?page_id=258 - acesso em 01/05/2022
+
+Lista de espécies ameaçadas: ICMBio (2020) http://dados.mma.gov.br/dataset/especies-ameacadas/resource/1f13b062-f3f6-4198-a4c5-3581548bebec - acesso em 05/05/2022
