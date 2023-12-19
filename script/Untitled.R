@@ -9,11 +9,21 @@ library(sp)
 #   #mutate(municipio = rep(LETTERS[1:10], 924)) %>% 
 #   select(scientificName, decimalLongitude, decimalLatitude)
 
+occ_NF <- read.csv("data/GBIF_occ_NF_03may2022_ameaca.csv", header = T) %>% 
+  mutate(ameacada = ifelse(is.na(Categoria.de.AmeaÃ.a), "não", "sim")) %>% 
+  filter(!is.na(decimalLatitude))
 
-norte_RJ <- read.delim("~/Downloads/0263225-210914110416597.csv") %>% 
+gbif_RJ <- read.delim("C:/Users/UENF/Downloads/gbif/occurrence.txt") 
+
+norte_RJ <- gbif_RJ %>%
+  dplyr::select(occurrenceID, decimalLongitude, decimalLatitude, basisOfRecord, occurrenceStatus,
+                year:day, locality, decimalLatitude, decimalLongitude, iucnRedListCategory,
+                kingdom:genus, species) %>% 
+# norte_RJ <- read.delim("~/Downloads/0263225-210914110416597.csv") %>% 
   mutate(decimalLongitude = as.numeric(decimalLongitude), 
          decimalLatitude = as.numeric(decimalLatitude)) %>% 
-  filter(!is.na(decimalLongitude))
+  filter(!is.na(decimalLongitude)) %>% 
+  distinct()
 
 
 occs <- norte_RJ %>%
@@ -21,7 +31,7 @@ occs <- norte_RJ %>%
 
 
 # Shapefile import
-NORFLU <- rgdal::readOGR("map.shp")
+NORFLU <- raster::shapefile("data/shapefile/map.shp")
 NORFLU_wsg84 <- spTransform(NORFLU, CRS("+proj=longlat +datum=WGS84"))
 
 UCs <- rgdal::readOGR("ucstodas.shp")

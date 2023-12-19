@@ -1,6 +1,6 @@
 # HEAT MAP
 
-library(ggplot2)
+library(tidyverse)
 
 # Reproducible data ----
 obs <- data.frame(x = 35 + (rnorm(100)/5), y = -2.5 + (rnorm(100)/5),
