@@ -45,8 +45,8 @@ occ <- st_as_sf(norte_RJ,
                      remove = F)
 head(occ)
 
-occ_joined <- st_join(occ, NORFLU, join = st_intersects)
-
+# occ_joined <- st_join(occ, NORFLU, join = st_within)
+occ_joined <- st_intersection(occ, NORFLU)
 
 occ_joined %>% 
   select(NM_MUNICIP) %>% 
@@ -60,13 +60,68 @@ pop_region <- occ_joined %>%
 
 pop_regionOCC <- left_join(NORFLU, pop_region) 
 
-plot(pop_regionOCC["total_pop"])
+# plot(pop_regionOCC["ocorrencias"])
+
+pop_regionOCC %>% 
+  ggplot() +
+    geom_sf(aes(fill = especies)) +
+    geom_point(data = occ_joined %>% filter(is.na(NM_MUNICIP)), aes(x = decimalLongitude,  y = decimalLatitude), color = "darkblue") +
+    theme_bw() +
+    labs(fill = "número de táxons") +
+    # scale_fill_continuous(low = "khaki", high = "firebrick")
+    scale_fill_continuous(low = "lightgrey", high = "firebrick")
 
 
-ggplot(pop_regionOCC) +
-  geom_sf(aes(fill = especies)) +
-  geom_point(data = occ_joined, aes(x = decimalLongitude,  y = decimalLatitude), color = "darkblue") +
-  theme_bw() +
-  labs(fill = "número de táxons") +
-  # scale_fill_continuous(low = "khaki", high = "firebrick")
-  scale_fill_continuous(low = "lightgrey", high = "firebrick")
+############
+
+# spp e  occ
+occ_joined %>% 
+  as.data.frame() %>% 
+  group_by(NM_MUNICIP) %>% 
+  summarise(especies = length(unique(species)),
+            genus = length(unique(genus)),
+            family = length(unique(family)),
+            order = length(unique(order)),
+            ocorrencias = length(species))
+
+## spp e  occ / before Lente
+# total
+occ_joined %>% 
+  as.data.frame() %>%
+  filter(eventDate < "2022-05-01") %>% 
+  summarise(ocorrencias = length(species))
+
+# por ano
+occ_joined %>% 
+  as.data.frame() %>%
+  filter(eventDate < "2022-05-01") %>% 
+  mutate(ano = year(eventDate)) %>% 
+  group_by(ano) %>% 
+  summarise(ocorrencias = length(species))
+
+#            
+occ_joined %>% 
+  as.data.frame() %>%
+  filter(eventDate < "2022-05-01") %>% 
+  group_by(NM_MUNICIP) %>% 
+  summarise(especies = length(unique(species)),
+            genus = length(unique(genus)),
+            family = length(unique(family)),
+            order = length(unique(order)),
+            ocorrencias = length(species))
+
+# spp e  occ / after Lente
+occ_joined %>% 
+  as.data.frame() %>%
+  filter(eventDate > "2022-05-01") %>% 
+  summarise(ocorrencias = length(species))
+
+occ_joined %>% 
+  as.data.frame() %>% 
+  filter(eventDate > "2022-05-01") %>% 
+  group_by(NM_MUNICIP) %>% 
+  summarise(especies = length(unique(species)),
+            genus = length(unique(genus)),
+            family = length(unique(family)),
+            order = length(unique(order)),
+            ocorrencias = length(species))
