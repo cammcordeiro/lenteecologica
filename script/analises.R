@@ -3,7 +3,7 @@
 library(tidyverse)
 
 # download via SibBr spatial portal using Norte Fluminense shapefile
-gbif_RJ <- read.csv("C:/Users/UENF/Downloads/gbif/records-2023-12-19.csv") 
+gbif_RJ <- read.csv("data/records-2023-12-19.csv") 
 
 norte_RJ <- gbif_RJ %>%
   dplyr::select(decimalLongitude, decimalLatitude,
@@ -139,13 +139,13 @@ occ_joined %>%
             ocorrencias = length(species))
 
 # reino
-occ_joined %>% 
-  as.data.frame() %>% 
-  group_by(NM_MUNICIP, kingdom, phylum) %>% 
+occ_joined %>%
+  as.data.frame() %>%
+  group_by(NM_MUNICIP, kingdom, phylum) %>%
   summarise(especies = length(unique(species)),
-            ocorrencias = length(species)) %>% 
+            ocorrencias = length(species)) %>%
   filter(kingdom != "",
-         phylum != "") %>% 
+         phylum != "") # %>%
   write.csv("taxon_reino-filo.csv", row.names = F)
   
 
@@ -198,10 +198,22 @@ occ_joined %>%
 
 ##########################################################################
 
+midia <- read.csv("data/seguidores.csv", sep = ";") %>% 
+  mutate(entrada = as.POSIXct(entrada, format = "%d/%m/%Y"),
+         primeiro_post = as.POSIXct(primeiro_post, format = "%d/%m/%Y"),
+         ultimo_post = as.POSIXct(ultimo_post, format = "%d/%m/%Y"),
+         curso = as.POSIXct(curso, format = "%d/%m/%Y")) %>% 
+  mutate(vida_iN = difftime(ymd("2023-12-02"), primeiro_post, units = "days") %>% as.numeric,
+         lapso = difftime(entrada, primeiro_post, units = "days") %>% abs() %>% as.numeric,
+         inatividade = difftime(ultimo_post, primeiro_post, units = "days") %>% abs() %>% as.numeric,
+         efetividade_pos = difftime(primeiro_post, curso, units = "days") %>% as.numeric,
+         efetividade = difftime(ultimo_post, curso, units = "days") %>% as.numeric)
 
+#
 
-
-
+midia %>% 
+  filter(!is.na(efetividade_pos)) %>% 
+  summary()
 
 
 
