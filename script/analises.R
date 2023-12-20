@@ -84,31 +84,127 @@ occ_joined %>%
             order = length(unique(order)),
             ocorrencias = length(species))
 
-## spp e  occ / before Lente
+#### 
+# acumulado occ por ano
+occ_joined %>% 
+  as.data.frame() %>%
+  # filter(eventDate < "2022-05-01") %>% 
+  mutate(ano = year(eventDate)) %>% 
+  group_by(ano) %>% 
+  summarise(ocorrencias = length(species)) %>% 
+  mutate(acc = cumsum(ocorrencias)) %>% 
+  ggplot(aes(x = ano, y = acc)) +
+  geom_col() +
+  theme_classic() +
+  labs(y = "número acumulado de registros (n)", x = "") +
+  theme(axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(size = 14)) +
+  scale_y_continuous(breaks = seq(0, 30000, by = 5000)) +
+  scale_x_continuous(breaks = seq(1950, 2023, by = 15), limits = c(1950, 2023))
+
+
+## spp e  occ / before Lente (primeira oficina em 13/05/2023)
 # total
 occ_joined %>% 
   as.data.frame() %>%
-  filter(eventDate < "2022-05-01") %>% 
+  filter(eventDate < "2023-05-13") %>% 
   summarise(ocorrencias = length(species))
 
 # por ano
 occ_joined %>% 
   as.data.frame() %>%
-  filter(eventDate < "2022-05-01") %>% 
+  filter(eventDate > "2013-01-01") %>% 
   mutate(ano = year(eventDate)) %>% 
   group_by(ano) %>% 
-  summarise(ocorrencias = length(species))
+  summarise(ocorrencias = length(species),
+            táxons = length(unique(species))) %>% 
+  ggplot(aes(x = ano, y = ocorrencias, fill = táxons)) +
+    geom_col() +  scale_fill_continuous(low = "lightblue", high = "firebrick") +
+    theme_classic() +
+    labs(y = "número de registros (n)", x = "") +
+    theme(axis.text.x = element_text(size = 14),
+          axis.text.y = element_text(size = 14),
+          axis.title.y = element_text(size = 14)) +
+    scale_x_continuous(breaks = seq(2013, 2023, by = 1))
 
 #            
 occ_joined %>% 
   as.data.frame() %>%
-  filter(eventDate < "2022-05-01") %>% 
   group_by(NM_MUNICIP) %>% 
   summarise(especies = length(unique(species)),
             genus = length(unique(genus)),
             family = length(unique(family)),
             order = length(unique(order)),
             ocorrencias = length(species))
+
+# reino
+occ_joined %>% 
+  as.data.frame() %>% 
+  group_by(NM_MUNICIP, kingdom, phylum) %>% 
+  summarise(especies = length(unique(species)),
+            ocorrencias = length(species)) %>% 
+  filter(kingdom != "",
+         phylum != "") %>% 
+  write.csv("taxon_reino-filo.csv", row.names = F)
+  
+
+# reino
+occ_joined %>% 
+  as.data.frame() %>% 
+  group_by(NM_MUNICIP, kingdom, phylum) %>% 
+  summarise(especies = length(unique(species)),
+            ocorrencias = length(species)) %>% 
+  filter(kingdom != "") %>%
+  rename(Reino = kingdom) %>% 
+  ggplot(aes(x = NM_MUNICIP, y = especies, fill = Reino)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(x = "", y = "número de táxons (n)") +
+  scale_fill_brewer(palette="Spectral")
+
+# plantae
+occ_joined %>% 
+  as.data.frame() %>% 
+  group_by(NM_MUNICIP, kingdom, phylum) %>% 
+  summarise(especies = length(unique(species)),
+            ocorrencias = length(species)) %>% 
+  filter(kingdom == "Plantae",
+         phylum != "") %>%
+  rename(Filo = phylum) %>%
+  ggplot(aes(x = NM_MUNICIP, y = especies, fill = Filo)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(x = "", y = "número de táxons (n)") +
+  scale_fill_brewer(palette="Spectral")
+
+# animalia
+occ_joined %>% 
+  as.data.frame() %>% 
+  group_by(NM_MUNICIP, kingdom, phylum) %>% 
+  summarise(especies = length(unique(species)),
+            ocorrencias = length(species)) %>% 
+  filter(kingdom == "Animalia",
+         phylum != "") %>%
+  rename(Filo = phylum) %>%
+  ggplot(aes(x = NM_MUNICIP, y = especies, fill = Filo)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(x = "", y = "número de táxons (n)") +
+  scale_fill_brewer(palette="Spectral")
+
+##########################################################################
+
+
+
+
+
+
+
+
 
 # spp e  occ / after Lente
 occ_joined %>% 
