@@ -20,7 +20,9 @@ norte_RJ %>% distinct(eventDate)
 ## Read in shapefile using sf
 library(sf)
 
-NORFLU <- read_sf("data/shapefile/map.shp")
+NORFLU <- read_sf("data/shapefile/map.shp") %>% 
+  filter(NM_MUNICIP != "BOM JESUS DO ITABAPOANA") 
+  
 
 plot(NORFLU)  
 
@@ -104,12 +106,16 @@ occ_joined %>%
   scale_x_continuous(breaks = seq(1950, 2023, by = 15), limits = c(1950, 2023))
 
 
-## spp e  occ / before Lente (primeira oficina em 13/05/2023)
-# total
+## spp e  occ / ultimo ano
+
+# total 2022
 occ_joined %>% 
   as.data.frame() %>%
-  filter(eventDate < "2023-05-13") %>% 
-  summarise(ocorrencias = length(species))
+  filter(eventDate > "2022-01-01",
+         eventDate > "2023-01-01") %>% 
+  summarise(ocorrencias = length(species),
+            especies = length(unique(species)))
+
 
 # por ano
 occ_joined %>% 
@@ -210,24 +216,56 @@ midia <- read.csv("data/seguidores.csv", sep = ";") %>%
          efetividade = difftime(ultimo_post, curso, units = "days") %>% as.numeric)
 
 #
-
-midia %>% 
+midia %>%
   filter(!is.na(efetividade_pos)) %>% 
   summary()
 
 
+midia %>% 
+  mutate(curso = ifelse(is.na(curso), "nao", "sim")) %>% 
+  group_by(curso) %>% 
+  summarise(registros = sum(registros, na.rm = T),
+            especies = sum(especies, na.rm = T))
 
+#### teste
+midia %>% 
+  filter(entrada > "2023-01-01") %>% 
+  mutate(curso = ifelse(is.na(curso), "nao", "sim")) %>% 
+  group_by(curso) %>% 
+  summarise(registros = sum(registros, na.rm = T),
+            usuarios = length(iNaturalist),
+            especies = sum(especies, na.rm = T)) %>% 
+  mutate(registros_pessoa = registros / usuarios) %>% 
+  select(registros_pessoa) %>% 
+  chisq.test()
+
+midia %>% 
+  filter(entrada > "2023-01-01") %>% 
+  mutate(curso = ifelse(is.na(curso), "nao", "sim")) %>% 
+  group_by(curso) %>% 
+  summarise(registros = sum(registros, na.rm = T),
+            especies = sum(especies, na.rm = T)) %>% 
+  select(especies) %>% 
+  chisq.test()
+
+#####
+
+midia %>% 
+  filter(entrada < "2023-05-13") %>% 
+  group_by(curso) %>% 
+  summarise(registros = sum(registros, na.rm = T),
+            especies = sum(especies, na.rm = T))
 
 # spp e  occ / after Lente
 occ_joined %>% 
   as.data.frame() %>%
-  filter(eventDate > "2022-05-01") %>% 
+  filter(eventDate > "2023-01-01") %>% 
   summarise(ocorrencias = length(species))
 
 occ_joined %>% 
   as.data.frame() %>% 
-  filter(eventDate > "2022-05-01") %>% 
-  group_by(NM_MUNICIP) %>% 
+  filter(eventDate > "2023-01-01") %>% 
+  # group_by(NM_MUNICIP) %>% 
   summarise(especies = length(unique(species)),
             genus = length(unique(genus)),
             family = length(unique(family)),
