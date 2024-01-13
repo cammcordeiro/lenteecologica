@@ -204,11 +204,13 @@ occ_joined %>%
 
 ##########################################################################
 
-midia <- read.csv("data/seguidores.csv", sep = ";") %>% 
+midia <- read.csv("data/seguidores1.csv", sep = ";") %>% 
   mutate(entrada = as.POSIXct(entrada, format = "%d/%m/%Y"),
          primeiro_post = as.POSIXct(primeiro_post, format = "%d/%m/%Y"),
          ultimo_post = as.POSIXct(ultimo_post, format = "%d/%m/%Y"),
-         curso = as.POSIXct(curso, format = "%d/%m/%Y")) %>% 
+         curso = as.POSIXct(curso, format = "%d/%m/%Y"),
+         tempo_no_IN = as.numeric(tempo_no_IN),
+         tempo_primeiro_post = as.numeric(tempo_primeiro_post)) %>% 
   mutate(vida_iN = difftime(ymd("2023-12-02"), primeiro_post, units = "days") %>% as.numeric,
          lapso = difftime(entrada, primeiro_post, units = "days") %>% abs() %>% as.numeric,
          inatividade = difftime(ultimo_post, primeiro_post, units = "days") %>% abs() %>% as.numeric,
