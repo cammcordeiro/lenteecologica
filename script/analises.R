@@ -58,7 +58,8 @@ pop_region <- occ_joined %>%
   as.data.frame() %>% 
   group_by(NM_MUNICIP) %>% 
   summarise(especies = length(unique(species)),
-            ocorrencias = length(species))
+            ocorrencias = length(species)) %>% 
+  bind_cols(tibble(pop = c(483551, 13847, 12958, 21104, 246391, 22393, 38961, 45059, 36573)))
 
 pop_regionOCC <- left_join(NORFLU, pop_region) 
 
@@ -75,6 +76,14 @@ pop_regionOCC %>%
 
 
 ############
+# reg e spp / pop
+
+pop_regionOCC %>% 
+  mutate(sp_pop = especies / pop,
+         occ_pop = ocorrencias / pop) %>% 
+  select(NM_MUNICIP, sp_pop, occ_pop) %>% 
+  arrange(-sp_pop)
+
 
 # spp e  occ
 occ_joined %>% 
@@ -246,8 +255,10 @@ midia %>%
   mutate(curso = ifelse(is.na(curso), "nao", "sim")) %>% 
   group_by(curso) %>% 
   summarise(registros = sum(registros, na.rm = T),
+            usuarios = length(iNaturalist),
             especies = sum(especies, na.rm = T)) %>% 
-  select(especies) %>% 
+  mutate(taxon_pessoa = especies / usuarios) %>%
+  select(taxon_pessoa) %>% 
   chisq.test()
 
 #####
