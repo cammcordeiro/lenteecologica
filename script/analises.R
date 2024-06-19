@@ -123,10 +123,43 @@ occ_joined %>%
   filter(eventDate > "2022-01-01",
          eventDate > "2023-01-01") %>% 
   summarise(ocorrencias = length(species),
-            especies = length(unique(species)))
+            especies = length(unique(species))) 
 
 
-# por ano
+### por ano ###
+library(mgcv)
+
+occ_joined %>% 
+  as.data.frame() %>%
+  filter(eventDate > "2019-01-01") %>% 
+  mutate(ano = year(eventDate)) %>% 
+  group_by(ano) %>% 
+  summarise(ocorrencias = length(species)) %>% 
+  mutate(pct_change = (ocorrencias/lag(ocorrencias) - 1) * 100) %>% 
+  summarise(median(pct_change, na.rm = T),
+            quantile(pct_change, na.rm = T, probs = c(0.25, 0.75)))
+
+
+# # %>% 
+#   # gam(ocorrencias ~ s(ano, bs = "cr"), data = .) %>% summary()
+#   ggplot(aes(x = ano, y = ocorrencias)) +
+#     geom_point() +
+#     geom_smooth(method = "gam")
+
+
+occ_joined %>% 
+  as.data.frame() %>%
+  filter(eventDate > "2013-01-01") %>% 
+  mutate(ano = year(eventDate)) %>% 
+  group_by(ano) %>% 
+  summarise(ocorrencias = length(species),
+            taxons = length(unique(species))) %>% 
+  summarise(median(ocorrencias),
+            sd(ocorrencias),
+            median(taxons),
+            sd(taxons))
+
+# medias
 occ_joined %>% 
   as.data.frame() %>%
   filter(eventDate > "2013-01-01") %>% 
@@ -238,6 +271,37 @@ midia %>%
   summarise(registros = sum(registros, na.rm = T),
             especies = sum(especies, na.rm = T))
 
+
+midia %>% 
+  as.data.frame() %>%
+  filter(!is.na(entrada),
+         entrada > "2013-01-01") %>% 
+  mutate(ano = year(entrada)) %>% 
+  group_by(ano) %>% 
+  summarise(ocorrencias = length(registros),
+            taxons = length(unique(especies))) %>%
+  ggplot(aes(x = ano, y = ocorrencias, fill = taxons)) +
+    geom_col() +  scale_fill_continuous(low = "lightblue", high = "firebrick") +
+    theme_classic() +
+    labs(y = "número de registros (n)", x = "") +
+    theme(axis.text.x = element_text(size = 14),
+          axis.text.y = element_text(size = 14),
+          axis.title.y = element_text(size = 14)) +
+    scale_x_continuous(breaks = seq(2013, 2023, by = 1))
+
+
+midia %>% 
+  as.data.frame() %>%
+  filter(!is.na(entrada),
+         entrada > "2013-01-01") %>% 
+  mutate(ano = year(entrada)) %>% 
+  group_by(ano) %>% 
+  summarise(ocorrencias = length(registros),
+            taxons = length(unique(especies))) %>%
+  mutate(pct_change = (ocorrencias/lag(ocorrencias) - 1) * 100) %>% 
+  select(ano, ocorrencias) %>%  rstatix::chisq_test()
+  summarise(mean(pct_change, na.rm = T))
+
 #### teste
 midia %>% 
   filter(entrada > "2023-01-01") %>% 
@@ -262,12 +326,12 @@ midia %>%
   chisq.test()
 
 #####
+# ver composicao de especies
 
 midia %>% 
   filter(entrada < "2023-05-13") %>% 
   group_by(curso) %>% 
-  summarise(registros = sum(registros, na.rm = T),
-            especies = sum(especies, na.rm = T))
+  summarise(registros = sum(registros, na.rm = T))
 
 # spp e  occ / after Lente
 occ_joined %>% 
