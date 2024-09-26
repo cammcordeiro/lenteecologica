@@ -1,0 +1,12 @@
+name: PortalLenteEcologica
+title: PortalLenteEcologica
+username: cammcordeiro
+account: cammcordeiro
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11901242
+bundleId: 8559415
+url: https://cammcordeiro.shinyapps.io/PortalLenteEcologica/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

@@ -28,11 +28,11 @@ library(plotly)
 
 
 # load data
-occ_NF <- read.csv("data/GBIF_occ_NF_03may2022_ameaca.csv", header = T) %>% 
-    mutate(ameacada = ifelse(is.na(Categoria.de.AmeaÃ.a), "não", "sim"))
+occ_NF <- read.csv("GBIF_occ_NF_03may2022_ameaca.csv", header = T) %>% 
+    mutate(ameacada = ifelse(is.na(Categoria.de.Ameaça), "não", "sim"))
 
-NORFLU <- rgdal::readOGR("data/shapefile/map.shp")
-UCs_NF <- rgdal::readOGR("data/shapefile/UCs_NF.shp")
+NORFLU <- sf::st_read("map.shp")
+UCs_NF <- sf::st_read("UCs_NF.shp")
 
 ```
 
@@ -43,11 +43,13 @@ UCs_NF <- rgdal::readOGR("data/shapefile/UCs_NF.shp")
 
 A "Lente Ecológica" faz um paralelo entre as metodologias utilizadas no projeto e como a sociedade percebe o meio ambiente. O objetivo do projeto é ajustar o 'foco' dos participantes em relação a fauna e flora, e como o ser humano se observa nessas relações. Utilizando a observação direta como meio de inserção dos participantes no contexto ambiental, as lentes das câmeras e *smartphones* e as mídias sociais serão as ferramentas do aprendizado empírico-científico e sensibilização ambiental dos participantes.
 
+Para saber mais, procure as nossas redes sociais (@lenteecologica)!
+
 ***
 
 ```{r, out.width=220}
 
-knitr::include_graphics("lente_ecologica.png", error = FALSE)
+knitr::include_graphics("logo_Instagram.png", error = FALSE)
 
 ```
 
@@ -145,7 +147,7 @@ ggplotly(a3)
 ```{r}
 
 a3 <- occ_NF %>% 
-  mutate(ameacada = ifelse(is.na(Categoria.de.AmeaÃ.a), "não", "sim")) %>% 
+  mutate(ameacada = ifelse(is.na(Categoria.de.Ameaça), "não", "sim")) %>% 
   group_by(NM_MUNICIP, ameacada) %>% 
   summarise(spp = n_distinct(species)) %>% 
   ggplot(aes(y = NM_MUNICIP, x = spp, fill = ameacada)) +
@@ -168,11 +170,9 @@ ggplotly(a3)
 
 lista_NM_MUNICIPs <- occ_NF %>% distinct(NM_MUNICIP) %>% pull()
 
-shiny::selectInput("NM_MUNICIPs", label = shiny::h3("Selecione um município para ver as ocorrências de espécies locais"), 
+selectInput("NM_MUNICIPs", label = h3("Selecione um município para ver as ocorrências de espécies locais"), 
             choices = lista_NM_MUNICIPs, 
             selected = lista_NM_MUNICIPs[[1]])
-
-selectInput
 
 ```
 
@@ -265,14 +265,14 @@ flexdashboard::renderGauge({
 renderPlotly({
   
   ameaca <- occ_NF %>% 
-  mutate(Categoria.de.AmeaÃ.a = as.factor(Categoria.de.AmeaÃ.a)) %>% 
-  filter(!is.na(Categoria.de.AmeaÃ.a)) %>% 
+  mutate(Categoria.de.Ameaça = as.factor(Categoria.de.Ameaça)) %>% 
+  filter(!is.na(Categoria.de.Ameaça)) %>% 
   filter(NM_MUNICIP == input$NM_MUNICIPs) %>%
-  group_by(Categoria.de.AmeaÃ.a, .drop = FALSE) %>% 
+  group_by(Categoria.de.Ameaça, .drop = FALSE) %>% 
   summarise(spp = n_distinct(species))
  
   L3 <- ameaca %>% 
-  ggplot(aes(x = Categoria.de.AmeaÃ.a, y = spp, fill = Categoria.de.AmeaÃ.a)) +
+  ggplot(aes(x = Categoria.de.Ameaça, y = spp, fill = Categoria.de.Ameaça)) +
     geom_bar(stat = 'identity') +
     theme_classic() +
     theme(legend.title = element_blank()) +
@@ -329,8 +329,8 @@ renderTable({
   occ_NF %>% 
     dplyr::filter(NM_MUNICIP == input$NM_MUNICIPs,
                   species != "") %>%
-    dplyr::select(species, kingdom:order, occurrenceID, Categoria.de.AmeaÃ.a) %>% 
-    group_by(species, kingdom, class, order, Categoria.de.AmeaÃ.a) %>% 
+    dplyr::select(species, kingdom:order, occurrenceID, Categoria.de.Ameaça) %>% 
+    group_by(species, kingdom, class, order, Categoria.de.Ameaça) %>% 
     summarise(ocorrencias = n_distinct(occurrenceID))
 
 })
@@ -339,7 +339,7 @@ renderTable({
 
 ## Row 3 {data-height="300"}
 
-### Temporal
+### Variação temporal das ocorrências
 
 ```{r}
 
@@ -400,6 +400,57 @@ renderLeaflet({
                      stroke = FALSE, 
                      fillOpacity = 0.5) 
 })
+
+```
+
+
+------------------------------------------------------------------------
+
+# UENF
+
+## Inputs {.sidebar}
+
+```{r}
+
+lista_NM_MUNICIPs <- occ_NF %>% distinct(NM_MUNICIP) %>% pull()
+
+selectInput("NM_MUNICIPs", label = h3("Selecione um município para ver as ocorrências de espécies locais"), 
+            choices = lista_NM_MUNICIPs, 
+            selected = lista_NM_MUNICIPs[[1]])
+
+```
+
+## Row 1 {data-height="200"}
+
+### Espécies
+
+```{r}
+
+dados <- read.csv("monitoramento_UENF.csv", header = TRUE) %>% 
+  mutate(DATA = as.POSIXct(DATA, format = "%d/%m/%Y"))
+
+
+riqueza <- dados %>% 
+  group_by(local, DATA) %>% 
+  summarise(spp = n_distinct(taxon)) 
+
+
+
+renderPlotly({
+  
+  L2 <- riqueza %>% 
+  ggplot(aes(y = spp, x = DATA)) +
+    geom_bar(stat = 'identity') +
+    theme_classic() +
+    theme(legend.position = "") +
+    labs(x = "Número de espécies", y = "")
+   
+      ggplotly(L2)
+
+  
+})
+
+# https://fontawesome.com/v4/icons/
 
 ```
 
