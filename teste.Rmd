@@ -1,0 +1,40 @@
+---
+title: "Lente Ecologica"
+output:
+  flexdashboard::flex_dashboard:
+    theme:
+      version: 4
+      bg: "#FFFFFF"
+      fg: "#4a7f39" 
+      primary: "#0d7caa"
+      navbar-bg: "#FF0000"
+      base_font: 
+        google: Prompt
+      heading_font:
+        google: Sen
+      code_font:
+        google: 
+          # arguments to sass::font_google() 
+          family: JetBrains Mono
+          local: false
+---
+
+```{r}
+library(crosstalk)
+library(leaflet)
+library(bslib)
+
+# Use crosstalk to create a client-side filter between the map and slider
+quake_dat <- SharedData$new(quakes)
+map_filter <- filter_slider("mag", "Magnitude", quake_dat, ~mag)
+map_quakes <- leaflet(quake_dat) |> addTiles() |> addCircleMarkers()
+
+page_sidebar(
+  title = "Client-side filtering",
+  sidebar = map_filter,
+  # Can also put other bslib components here
+  # like cards, value boxes, etc.
+  map_quakes
+)
+```
+
