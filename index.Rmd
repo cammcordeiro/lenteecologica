@@ -24,11 +24,9 @@ library(flexdashboard)
 library(tidyverse)
 library(plotly)
 library(leaflet)
-library(plotly)
-
 
 # load data
-occ_NF <- read.csv("GBIF_occ_NF_03may2022_ameaca.csv", header = T) %>% 
+occ_NF <- read.csv("data/GBIF_occ_NF_03may2022_ameaca.csv", header = T) %>% 
     mutate(ameacada = ifelse(is.na(Categoria.de.Ameaça), "não", "sim"))
 
 NORFLU <- sf::st_read("map.shp")
@@ -167,6 +165,8 @@ ggplotly(a3)
 ## Inputs {.sidebar}
 
 ```{r}
+
+library(shiny)
 
 lista_NM_MUNICIPs <- occ_NF %>% distinct(NM_MUNICIP) %>% pull()
 
@@ -408,17 +408,16 @@ renderLeaflet({
 
 # UENF
 
-## Inputs {.sidebar}
+## Introdução {.sidebar}
 
-```{r}
 
-lista_NM_MUNICIPs <- occ_NF %>% distinct(NM_MUNICIP) %>% pull()
+Toda semana, os integrantes da Lente percorrem o campus Leonel Brizola da UENF para registrar a fauna e flora.
+As avistagens são feitas em 10 pontos em um tempo fixo de 15 minutos em cada estação. Ao lado você pode observar um pouco sobre essa biodiversidade em números!
 
-selectInput("NM_MUNICIPs", label = h3("Selecione um município para ver as ocorrências de espécies locais"), 
-            choices = lista_NM_MUNICIPs, 
-            selected = lista_NM_MUNICIPs[[1]])
+Acesse no site para saber mais:
 
-```
+***
+
 
 ## Row 1 {data-height="200"}
 
@@ -426,8 +425,8 @@ selectInput("NM_MUNICIPs", label = h3("Selecione um município para ver as ocorr
 
 ```{r}
 
-dados <- read.csv("monitoramento_UENF.csv", header = TRUE) %>% 
-  mutate(DATA = as.POSIXct(DATA, format = "%d/%m/%Y"))
+dados <- read.csv("data/monitoramento_UENF.csv", header = TRUE) %>% 
+  mutate(DATA = as.POSIXct(DATA, format = "%Y-%m-%d"))
 
 
 riqueza <- dados %>% 
@@ -450,7 +449,38 @@ renderPlotly({
   
 })
 
-# https://fontawesome.com/v4/icons/
+```
+
+
+## Row 1 {data-height="200"}
+
+### Espécies
+
+```{r}
+
+dados <- read.csv("data/monitoramento_UENF.csv", header = TRUE) %>% 
+  mutate(DATA = as.POSIXct(DATA, format = "%d/%m/%Y"))
+
+
+riqueza <- dados %>% 
+  group_by(local, DATA) %>% 
+  summarise(spp = n_distinct(taxon)) 
+
+
+
+renderPlotly({
+  
+  L2 <- riqueza %>% 
+  ggplot(aes(y = spp, x = DATA)) +
+    geom_bar(stat = 'identity') +
+    theme_classic() +
+    theme(legend.position = "") +
+    labs(x = "Número de espécies", y = "")
+   
+      ggplotly(L2)
+
+  
+})
 
 ```
 
