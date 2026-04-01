@@ -426,11 +426,11 @@ Acesse no site para saber mais:
 ```{r}
 
 dados <- read.csv("data/monitoramento_UENF.csv", header = TRUE) %>% 
-  mutate(DATA = as.POSIXct(DATA, format = "%Y-%m-%d"))
+  mutate(data = as.POSIXct(data, format = "%Y-%m-%d"))
 
 
 riqueza <- dados %>% 
-  group_by(local, DATA) %>% 
+  group_by(local, data) %>% 
   summarise(spp = n_distinct(taxon)) 
 
 
@@ -438,7 +438,7 @@ riqueza <- dados %>%
 renderPlotly({
   
   L2 <- riqueza %>% 
-  ggplot(aes(y = spp, x = DATA)) +
+  ggplot(aes(y = spp, x = data)) +
     geom_bar(stat = 'identity') +
     theme_classic() +
     theme(legend.position = "") +
@@ -459,11 +459,11 @@ renderPlotly({
 ```{r}
 
 dados <- read.csv("data/monitoramento_UENF.csv", header = TRUE) %>% 
-  mutate(DATA = as.POSIXct(DATA, format = "%d/%m/%Y"))
+  mutate(data = as.POSIXct(data, format = "%d/%m/%Y"))
 
 
 riqueza <- dados %>% 
-  group_by(local, DATA) %>% 
+  group_by(local, data) %>% 
   summarise(spp = n_distinct(taxon)) 
 
 
