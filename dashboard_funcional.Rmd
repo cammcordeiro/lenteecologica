@@ -424,26 +424,44 @@ Acesse no site para saber mais:
 
 ```{r}
 
-dados <- read.csv("data/monitoramento_UENF.csv", header = TRUE) %>% 
-  mutate(data = as.POSIXct(data, format = "%Y-%m-%d"))
+taxon <- read.csv("~/git/lenteecologica/data/taxonomia.csv")
+
+monit <- readxl::read_xlsx('~/git/lenteecologica/data/monitoramento_UENF.xlsx') %>% 
+  filter(!taxon %in% c("", "#N/A"),
+         local != "") %>% 
+  select(DATA, local, coletor, taxon) %>% 
+  mutate(n_coletor = str_count(coletor, "/")+1,
+         local = trimws(local) %>% 
+           recode(., "Pontp 9" = "Ponto 9", "Ponto1" = "Ponto 1", "Ponto  10" = "Ponto 10"),
+         ano_mes = as.Date(DATA) %>% zoo::as.yearmon(),
+         mes = as.Date(DATA) %>% month() %>% as.factor())
 
 
-riqueza <- dados %>% 
-  group_by(local, data) %>% 
-  summarise(spp = n_distinct(taxon)) 
-
+monit_taxon <- monit %>% 
+  left_join(taxon %>% 
+              select(canonicalName, kingdom:species) %>% 
+              filter(canonicalName != "",
+                     genus != "Formicidae") %>% 
+              distinct() %>% 
+              rename(taxon = canonicalName), by = "taxon") %>% 
+  filter(!is.na(kingdom)) 
 
 
 renderPlotly({
   
-  L2 <- riqueza %>% 
-  ggplot(aes(y = spp, x = data)) +
-    geom_bar(stat = 'identity') +
-    theme_classic() +
-    theme(legend.position = "") +
-    labs(x = "Número de espécies", y = "")
+  L2 <- monit %>%
+    group_by(DATA, local, coletor) %>% 
+    reframe(riqueza = n_distinct(taxon)) %>% 
+    mutate(local = factor(local, levels = c("Ponto 1", "Ponto 2", "Ponto 3", "Ponto 4", "Ponto 5", "Ponto 6", 
+                                            "Ponto 7", "Ponto 8", "Ponto 9", "Ponto 10"))) %>% 
+    ggplot(aes(x = local, y = riqueza)) +
+      geom_boxplot() + 
+      geom_jitter(alpha = 0.4, width = 0.1) + 
+      theme_classic() +
+      labs(y = "Riqueza (S)", x = "") +
+      theme(legend.position = "") 
    
-      ggplotly(L2)
+  ggplotly(L2)
 
   
 })
@@ -457,16 +475,86 @@ renderPlotly({
 
 ```{r}
 
+# taxons mais frequentes
+monit_1 <- monit %>% 
+  select(taxon) %>% 
+  arrange(taxon) %>% 
+  count(taxon) %>% 
+  arrange(-n) %>% 
+  mutate(frel = (n/sum(n)*100)) %>% 
+  filter(frel > 0.9) %>% 
+  pull(taxon)
+
+# riqueza de taxons
+riqueza <- monit %>% 
+  filter(!is.na(DATA)) %>% 
+  mutate(mes = as.Date(DATA) %>% month() %>% as.factor(),
+         n_coletor = str_count(coletor, "/")+1) %>%
+  mutate(mes = recode(mes, "1" = "janeiro", "2" = "fevereiro", "3" = "março", "4" = "abril", 
+                      "5" = "maio", "6"= "junho", "7" = "julho", "8" = "agosto", "9" = "setembro", 
+                      "10" = "outubro", "11" = "novembro", "12" = "dezembro")) %>% 
+  filter(!is.na(mes)) %>% 
+  group_by(mes, local, coletor) %>% 
+  reframe(riqueza = n_distinct(taxon)) %>% 
+  mutate(n_coletor = str_count(coletor, "/")+1) %>% 
+  mutate(riq_std = riqueza/n_coletor)
+
+# similaridade
+wide <- monit %>% 
+  # mutate(taxon = ifelse(is.na(taxon), nome_comum, taxon)) %>% 
+  select(local, DATA, mes, taxon) %>%
+  filter(!is.na(mes)) %>%
+  distinct() %>%
+  mutate(ab = 1) %>%
+  group_by(local, mes, taxon) %>% 
+  summarise(freq = sum(ab)) %>%
+  select(local, mes, taxon, freq) %>%
+  pivot_wider(names_from = 'taxon', values_from = 'freq') %>% 
+  replace(is.na(.), 0)
+
+wide_pto <- monit %>% 
+  select(local, DATA, mes, taxon) %>%
+  filter(!is.na(mes)) %>%
+  distinct() %>%
+  mutate(ab = 1) %>%
+  group_by(local, taxon) %>% 
+  summarise(freq = sum(ab)) %>%
+  select(local, taxon, freq) %>%
+  pivot_wider(names_from = 'taxon', values_from = 'freq') %>% 
+  replace(is.na(.), 0)
+
+wide_mes <- monit %>% 
+  select(local, DATA, mes, taxon) %>%
+  filter(!is.na(mes)) %>%
+  distinct() %>%
+  mutate(ab = 1) %>%
+  group_by(mes, taxon) %>% 
+  summarise(freq = sum(ab)) %>%
+  select(mes, taxon, freq) %>%
+  pivot_wider(names_from = 'taxon', values_from = 'freq') %>% 
+  replace(is.na(.), 0)
+
+####
+
 renderPlotly({
   
-  L2 <- riqueza %>% 
-  ggplot(aes(y = spp, x = data)) +
-    geom_bar(stat = 'identity') +
-    theme_classic() +
-    theme(legend.position = "") +
-    labs(x = "Número de espécies", y = "")
-   
-      ggplotly(L2)
+  L3 <- monit %>% 
+    filter(!is.na(DATA)) %>% 
+    mutate(mes = as.Date(DATA) %>% month() %>% as.factor()) %>% # taxon_corrigido = factor(taxon_corrigido, levels = ordem)
+    mutate(mes = recode(mes, "1" = "janeiro", "2" = "fevereiro", "3" = "março", "4" = "abril", 
+                        "5" = "maio", "6"= "junho", "7" = "julho", "8" = "agosto", "9" = "setembro", 
+                        "10" = "outubro", "11" = "novembro", "12" = "dezembro")) %>% 
+    filter(!is.na(mes)) %>% 
+    group_by(mes, local, coletor) %>% 
+    reframe(riqueza = n_distinct(taxon)) %>% 
+    ggplot(aes(x = mes, y = riqueza)) +
+      geom_boxplot() + 
+      geom_jitter(alpha = 0.4, width = 0.1) + 
+      theme_classic() +
+      labs(y = "Riqueza (S)", x = "") +
+      theme(legend.position = "") 
+     
+  ggplotly(L3)
 
   
 })
