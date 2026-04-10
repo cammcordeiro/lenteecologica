@@ -8,10 +8,10 @@ library(ggrepel)
 # https://www.gbif.org/tools/species-lookup 
 taxon <- read.csv("~/git/lenteecologica/data/taxonomia.csv")
 
-monit <- read.csv('data/monitoramento_UENF.csv') %>% 
-  filter(!taxon_corrigido %in% c("", "#N/A"),
-         local != "") %>% 
-  select(data:coletor, taxon_corrigido) %>% 
+monit <- readxl::read_xlsx('~/git/lenteecologica/data/monitoramento_UENF.xlsx') %>% 
+  # filter(!taxon_corrigido %in% c("", "#N/A"),
+  #        local != "") %>% 
+  select(DATA:coletor, taxon_corrigido) %>% 
   mutate(n_coletor = str_count(coletor, "/")+1,
          local = trimws(local) %>% 
            recode(., "Pontp 9" = "Ponto 9", "Ponto1" = "Ponto 1", "Ponto  10" = "Ponto 10"),

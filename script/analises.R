@@ -1,6 +1,7 @@
 ## https://learning.nceas.ucsb.edu/2019-11-RRCourse/spatial-vector-analysis-using-sf.html
 
 library(tidyverse)
+library(sf)
 
 # download via SibBr spatial portal using Norte Fluminense shapefile
 gbif_RJ <- read.csv("data/records-2023-12-19.csv") 
@@ -18,7 +19,7 @@ norte_RJ <- gbif_RJ %>%
 norte_RJ %>% distinct(eventDate)
 
 ## Read in shapefile using sf
-library(sf)
+
 
 NORFLU <- read_sf("data/shapefile/map.shp") %>% 
   filter(NM_MUNICIP != "BOM JESUS DO ITABAPOANA") 
@@ -194,7 +195,7 @@ occ_joined %>%
             ocorrencias = length(species)) %>%
   filter(kingdom != "",
          phylum != "") # %>%
-  write.csv("taxon_reino-filo.csv", row.names = F)
+  # write.csv("taxon_reino-filo.csv", row.names = F)
   
 
 # reino
@@ -300,7 +301,7 @@ midia %>%
             taxons = length(unique(especies))) %>%
   mutate(pct_change = (ocorrencias/lag(ocorrencias) - 1) * 100) %>% 
   select(ano, ocorrencias) %>%  rstatix::chisq_test()
-  summarise(mean(pct_change, na.rm = T))
+  # summarise(mean(pct_change, na.rm = T))
 
 #### teste
 midia %>% 
