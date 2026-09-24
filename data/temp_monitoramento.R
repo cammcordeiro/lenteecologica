@@ -2,8 +2,6 @@
 library(tidyverse)
 
 met <- bind_rows(
-  read.csv2("~/git/lenteecologica/data/meteoro_abr2026-set2026.csv",
-  read.csv2("~/git/lenteecologica/data/meteoro_out2025-abr2026.csv"),
   read.csv2("~/git/lenteecologica/data/meteoro_mar2025-set2025.csv"),
   read.csv2("~/git/lenteecologica/data/meteoro_set2024-mar2025.csv")
 ) %>% 
