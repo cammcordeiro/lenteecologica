@@ -8,7 +8,7 @@ library(ggrepel)
 # https://www.gbif.org/tools/species-lookup 
 taxon <- read.csv("~/git/lenteecologica/data/taxonomia.csv")
 
-monit <- readxl::read_xlsx('~/git/lenteecologica/data/monitoramento_UENFago26.xlsx') %>% 
+monit <- readxl::read_xlsx('~/git/lenteecologica/data/monitoramento_UENF.xlsx') %>% 
   # filter(!taxon_corrigido %in% c("", "#N/A"),
   #        local != "") %>% 
   select(DATA:coletor, taxon_corrigido) %>% 
